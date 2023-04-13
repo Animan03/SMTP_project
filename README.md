@@ -13,7 +13,7 @@ To use this project, you need to have Python 3 installed on your computer. You c
 
 ### Installation
 
-1. Clone this repository to your local machine: `git clone https://github.com/yourusername/mail-client.git`
+1. Clone this repository to your local machine: `https://github.com/Animan03/SMTP_project.git`
 2. Open the terminal or command prompt and navigate to the project directory: `cd mail-client`
 
 ### Usage
