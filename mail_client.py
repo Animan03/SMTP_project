@@ -2,6 +2,8 @@ import base64
 import ssl
 from socket import AF_INET, SOCK_STREAM, socket
 from tkinter import *
+import time 
+
 
 
 # create a function that will send the email
@@ -17,15 +19,22 @@ def sendEmail():
     endmsg = "\r\n.\r\n"
 
     # Choose a mail server (e.g. Google mail server) and call it mailserver
-    mailserver = 'smtp.gmail.com'
-    mailPort = 587
+    if 'gmail.com' in userEmail:
+        mailserver = 'smtp.gmail.com'
+        mailPort = 587
+    elif 'yahoo.com' in userEmail:
+        mailserver = 'smtp.mail.yahoo.com'
+        mailPort = 587
 
     # Create socket called clientSocket and establish a TCP connection with mailserver
     clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.connect((mailserver, mailPort))
+    try:
+        clientSocket.connect((mailserver, mailPort))
+    except Exception as e:
+        print(f"Error connecting to {mailserver} on port {mailPort}: {e}")
+        return
 
     recv = clientSocket.recv(1024).decode()
-    # print(recv)
     if recv[:3] != '220':
         print('220 reply not received from server.')
 
@@ -33,7 +42,6 @@ def sendEmail():
     heloCommand = 'HELO Ashvin\r\n'
     clientSocket.send(heloCommand.encode())
     recv1 = clientSocket.recv(1024).decode()
-    # print(recv1)
 
     if recv1[:3] != '250':
         print('250 reply not received from server.')
@@ -43,43 +51,49 @@ def sendEmail():
     clientSocket.send(strtlscmd)
     revc2 = clientSocket.recv(1024)
 
+    time.sleep(3)
+
     sslClientSocket = ssl.wrap_socket(clientSocket)
 
-    # emailA = base64.b64encode(userEmail.encode)
-    # emailP = base64.b64encode(userPassword.encode)
-    emailA = base64.b64encode(bytes(userEmail, "UTF-8"))
-    emailP = base64.b64encode(bytes(userPassword, "UTF-8"))
-    authorizationCMD = "AUTH LOGIN\r\n"
-
-    sslClientSocket.send(authorizationCMD.encode())
-    recv2 = sslClientSocket.recv(1024)
-    # print(recv2)
-
-    sslClientSocket.send(emailA + "\r\n".encode())
-    recv3 = sslClientSocket.recv(1024)
-    # print(recv3)
-
-    sslClientSocket.send(emailP + "\r\n".encode())
-    recv4 = sslClientSocket.recv(1024)
-    # print(recv4)
-
+    if 'gmail.com' in userEmail:
+        # authentication for gmail
+        print("gmail")
+        emailA = base64.b64encode(bytes(userEmail, "UTF-8"))
+        emailP = base64.b64encode(bytes(userPassword, "UTF-8"))
+        authorizationCMD = "AUTH LOGIN\r\n"
+        sslClientSocket.send(authorizationCMD.encode())
+        recv2 = sslClientSocket.recv(1024)
+        sslClientSocket.send(emailA + "\r\n".encode())
+        recv3 = sslClientSocket.recv(1024)
+        sslClientSocket.send(emailP + "\r\n".encode())
+        recv4 = sslClientSocket.recv(1024)
+    elif 'yahoo.com' in userEmail:
+        # authentication for yahoo
+        print("yahoo")
+        emailFull = userEmail
+        authID = base64.b64encode(bytes(emailFull, "UTF-8"))
+        authPassword = base64.b64encode(bytes(userPassword, "UTF-8"))
+        authorizationCMD = "AUTH PLAIN\r\n"
+        sslClientSocket.send(authorizationCMD.encode())
+        recv2 = sslClientSocket.recv(1024)
+        authString = '\0{}\0{}'.format(emailFull, userPassword)
+        authString = base64.b64encode(bytes(authString, "UTF-8"))
+        sslClientSocket.send(authString + "\r\n".encode())
+        recv3 = sslClientSocket.recv(1024)
     # Send MAIL FROM command and print server response.
-    mailFrom = "Mail from: <{}>\r\n".format(userDestinationEmail)
-    sslClientSocket.send(mailFrom.encode())
+    mailFromCommand = "MAIL FROM:<{}>\r\n".format(userEmail)
+    sslClientSocket.send(mailFromCommand.encode())
     recv5 = sslClientSocket.recv(1024)
-    # print(recv5)
-    
+
     # Send RCPT TO command and print server response.
-    rcptto = "RCPT TO: <{}>\r\n".format(userDestinationEmail)
-    sslClientSocket.send(rcptto.encode())
+    rcptToCommand = "RCPT TO:<{}>\r\n".format(userDestinationEmail)
+    sslClientSocket.send(rcptToCommand.encode())
     recv6 = sslClientSocket.recv(1024)
-    # print(recv6)
 
     # Send DATA command and print server response.
-    data = 'DATA\r\n'
-    sslClientSocket.send(data.encode())
+    dataCommand = "DATA\r\n"
+    sslClientSocket.send(dataCommand.encode())
     recv7 = sslClientSocket.recv(1024)
-    # print(recv7)
 
     # Send message data.
     sslClientSocket.send("Subject: {}\n\n{}".format(userSubject, msg).encode())
@@ -87,22 +101,19 @@ def sendEmail():
     # Message ends with a single period.
     sslClientSocket.send(endmsg.encode())
     recv8 = sslClientSocket.recv(1024)
-    # print(recv8)
 
     # Send QUIT command and get server response.
-
-    quitCMD = 'QUIT\r\n'
-    sslClientSocket.send(quitCMD.encode())
+    quitCommand = "QUIT\r\n"
+    sslClientSocket.send(quitCommand.encode())
     recv9 = sslClientSocket.recv(1024)
-    # print(recv9)
 
+    # Close connection with clientSocket and sslClientSocket.
+    clientSocket.close()
     sslClientSocket.close()
     print('Success')
 
     # close the GUI
     root.destroy()
-    
-
 
 
 # make the GUI more user friendly and better looking
